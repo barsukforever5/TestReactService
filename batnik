@@ -1,0 +1,4 @@
+podman stop react-backend-app
+podman rm react-backend-app
+podman build -t react-backend-app .
+podman run -d -p 8081:8080 --name react-backend-app react-backend-app
