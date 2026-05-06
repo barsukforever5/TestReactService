@@ -1,7 +1,7 @@
 podman stop react-backend-app
 podman rm react-backend-app
-podman build -t react-backend-app .
-podman run -d -p 8081:8080 --name react-backend-app react-backend-app
+podman build -t react-backend-image .
+podman run -d -p 8081:8080 --name react-backend-app react-backend-image
 
 cd C:\WORK\Projects\TestReactService
 npx react-frontend-app frontend
@@ -11,5 +11,5 @@ PS C:\WORK\Projects\TestReactService\frontend> npm run build
 
 podman stop react-frontend-app
 podman rm react-frontend-app
-podman build -t react-frontend-app .
-podman run -d -p 3000:80 --name react-frontend-app react-frontend-app
+podman build -t react-frontend-image .
+podman run -d -p 3000:80 --name react-frontend-app react-frontend-image
