@@ -79,41 +79,79 @@ function App() {
           placeholder="age"
           value={age}
           onChange={(e) => setAge(e.target.value)}
+          style={{ marginLeft: 10 }}
         />
 
-        <button onClick={saveUser}>
+        <button onClick={saveUser} style={{ marginLeft: 10 }}>
           {editingKey ? "Update" : "Add"}
         </button>
 
         {editingKey && (
-          <button onClick={() => {
-            setEditingKey(null);
-            setName("");
-            setAge("");
-          }}>
+          <button
+            onClick={() => {
+              setEditingKey(null);
+              setName("");
+              setAge("");
+            }}
+            style={{ marginLeft: 10 }}
+          >
             Cancel
           </button>
         )}
       </div>
 
-      {/* список */}
-      <ul>
-        {users.map((u) => (
-          <li key={u.key}>
-            {u.name} ({u.age})
+      {/* таблица */}
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          marginTop: 20,
+        }}
+      >
+        <thead>
+          <tr>
+            <th style={th}>Name</th>
+            <th style={th}>Age</th>
+            <th style={th}>Key</th>
+            <th style={th}>Actions</th>
+          </tr>
+        </thead>
 
-            <button onClick={() => startEdit(u)}>
-              Edit
-            </button>
+        <tbody>
+          {users.map((u) => (
+            <tr key={u.key}>
+              <td style={td}>{u.name}</td>
+              <td style={td}>{u.age}</td>
+              <td style={td}>{u.key}</td>
 
-            <button onClick={() => deleteUser(u.key)}>
-              Delete
-            </button>
-          </li>
-        ))}
-      </ul>
+              <td style={td}>
+                <button onClick={() => startEdit(u)}>Edit</button>
+
+                <button
+                  onClick={() => deleteUser(u.key)}
+                  style={{ marginLeft: 10 }}
+                >
+                  Delete
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
+
+const th = {
+  border: "1px solid #ccc",
+  padding: "8px",
+  background: "#f5f5f5",
+  textAlign: "left",
+};
+
+const td = {
+  border: "1px solid #ccc",
+  padding: "8px",
+};
 
 export default App;
