@@ -12,6 +12,8 @@ function App() {
   // 📥 загрузка пользователей
   const loadUsers = async () => {
     const res = await fetch(API);
+    console.log('load_Users:', res);
+
     const data = await res.json();
     setUsers(data);
   };
@@ -33,7 +35,7 @@ function App() {
       });
     } else {
       // CREATE
-      await fetch(API, {
+      await fetch(`${API}/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, age: Number(age) }),
