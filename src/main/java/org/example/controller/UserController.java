@@ -1,8 +1,11 @@
 package org.example.controller;
 
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.map.IMap;
 import jakarta.annotation.PostConstruct;
 import org.example.User;
 import org.example.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,6 +18,16 @@ import java.util.List;
 @RestController
 @RequestMapping("/api")
 public class UserController {
+
+    @Autowired
+    private HazelcastInstance hazelcast;
+
+    @PostMapping("/put")
+    public String put() {
+        IMap<String, String> map = hazelcast.getMap("test");
+        map.put("hello", "from-react");
+        return "ok";
+    }
 
     private final UserService service;
 
