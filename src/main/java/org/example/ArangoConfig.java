@@ -10,7 +10,7 @@ public class ArangoConfig {
     @Bean
     public ArangoDB arangoDB() {
         return new ArangoDB.Builder()
-                .host("host.containers.internal", 8529)
+                .host("arangodb.arango.svc.cluster.local", 8529)
                 .user("root")
                 .password("root")
                 .build();
