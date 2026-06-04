@@ -229,14 +229,12 @@ set BACKEND_CHANGED=false
 set FRONTEND_CHANGED=false
 
 :: Check backend files (skip scripts and version files)
-:: We first strip out build scripts, then check backend patterns
-echo %CHANGED% | findstr /I /R /C:"^[^;]*[\\/]src[\\/]" /C:"^[^;]*pom\.xml" /C:"^[^;]*Dockerfile" >nul 2>nul
-echo %CHANGED% | findstr /I /S /C:"src\\" >nul && set BACKEND_CHANGED=true
-echo %CHANGED% | findstr /I /S /C:"pom.xml" >nul && set BACKEND_CHANGED=true
-echo %CHANGED% | findstr /I /S /C:"Dockerfile" >nul && set BACKEND_CHANGED=true
+echo %CHANGED% | findstr /I /C:"src/" >nul && set BACKEND_CHANGED=true
+echo %CHANGED% | findstr /I /C:"pom.xml" >nul && set BACKEND_CHANGED=true
+echo %CHANGED% | findstr /I /C:"Dockerfile" >nul && set BACKEND_CHANGED=true
 
 :: Check frontend files
-echo %CHANGED% | findstr /I /S /C:"frontend\\" >nul && set FRONTEND_CHANGED=true
+echo %CHANGED% | findstr /I /C:"frontend/" >nul && set FRONTEND_CHANGED=true
 
 if "%BACKEND_CHANGED%"=="false" if "%FRONTEND_CHANGED%"=="false" (
     echo [WARN] No changes detected in backend/frontend.
@@ -251,10 +249,10 @@ if "%BACKEND_CHANGED%"=="true" if "%FRONTEND_CHANGED%"=="true" (
 
 if "%BACKEND_CHANGED%"=="true" (
     echo [INFO] Auto-detect: changes only in backend
-    set FRONTEND_ONLY=true
+    set BACKEND_ONLY=true
 ) else (
     echo [INFO] Auto-detect: changes only in frontend
-    set BACKEND_ONLY=true
+    set FRONTEND_ONLY=true
 )
 exit /b 0
 

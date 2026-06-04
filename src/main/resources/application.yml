@@ -3,3 +3,9 @@ spring:
     view:
       prefix: /WEB-INF/jsp/
       suffix: .jsp
+
+arangodb:
+  host: arangodb.arango.svc.cluster.local
+  port: 8529
+  user: root
+  password: root

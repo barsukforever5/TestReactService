@@ -99,9 +99,11 @@ auto_detect() {
   while IFS= read -r file; do
     [[ -z "$file" ]] && continue
     # skip build scripts and version files
-    [[ "$file" =~ ^(build\.sh|build\.bat|\.version\.|\.gitignore)$ ]] && continue
+    case "$file" in
+      build.sh|build.bat|.gitignore|.version.*) continue ;;
+    esac
 
-    if [[ "$file" =~ ^(src/|pom\.xml|Dockerfile)$ ]]; then
+    if [[ "$file" =~ ^src/ ]] || [[ "$file" == "pom.xml" ]] || [[ "$file" == "Dockerfile" ]]; then
       backend_changed=true
     fi
     if [[ "$file" =~ ^frontend/ ]]; then
