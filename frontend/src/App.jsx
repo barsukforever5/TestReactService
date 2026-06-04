@@ -65,7 +65,7 @@ function App() {
 
   return (
     <div style={{ padding: 20 }}>
-      <h1>User CRUD</h1>
+      <h1>React Test</h1>
 
       {/* форма */}
       <div style={{ marginBottom: 20 }}>
