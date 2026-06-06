@@ -4,7 +4,6 @@ setlocal EnableDelayedExpansion
 :: ============================================================
 :: CI/CD build.bat for Windows CMD
 :: Build, push and generate deploy commands for backend/frontend
-:: Auto-detect: collects only what changed in git (ignores whitespace)
 :: ============================================================
 
 set REGISTRY=docker.io/barsukforever5
@@ -14,14 +13,12 @@ set FRONTEND_IMAGE=react-frontend-image
 set NAMESPACE=dev-1
 set BACKEND_DEPLOYMENT=react-backend-app
 set FRONTEND_DEPLOYMENT=react-frontend-app
-set BACKEND_CONTAINER=react-backend
-set FRONTEND_CONTAINER=react-frontend
+set BACKEND_CONTAINER=react-backend-container
+set FRONTEND_CONTAINER=react-frontend-container
 
 set BACKEND_VER_FILE=.version.backend
 set FRONTEND_VER_FILE=.version.frontend
 
-set SSH_USER=makanin
-set SSH_HOST=146.103.121.31
 set FRONTEND_URL=https://react.barsukforever.dev/react-frontend-app/
 
 :: --- defaults ---
@@ -32,7 +29,6 @@ set BACKEND_ONLY=false
 set FRONTEND_ONLY=false
 set BACKEND_VERSION=
 set FRONTEND_VERSION=
-set FORCE_BOTH=false
 
 :: --- parse args ---
 :parse
@@ -66,11 +62,6 @@ if /I "%~1"=="--frontend-version" (
     set FRONTEND_VERSION=v!RESULT!
     set FRONTEND_ONLY=true
     shift
-    shift
-    goto :parse
-)
-if /I "%~1"=="--both" (
-    set FORCE_BOTH=true
     shift
     goto :parse
 )
@@ -110,9 +101,6 @@ if "%BACKEND_ONLY%"=="true" if "%FRONTEND_ONLY%"=="true" (
     echo ERROR: --backend-only and --frontend-only cannot be used together
     exit /b 1
 )
-
-:: --- auto-detect ---
-call :auto_detect
 
 :: --- calculate versions ---
 if "%BACKEND_VERSION%"=="" (
@@ -185,15 +173,14 @@ goto :eof
 echo Usage: %~nx0 [OPTIONS]
 echo.
 echo Options:
-echo   -v, --version X       Common version (vX)
+echo   -v, --version X       Common version ^(vX^)
 echo   --backend-version X   Backend version only
 echo   --frontend-version X  Frontend version only
-echo   --both                Force both services
 echo   --skip-build          Skip mvn/npm and podman build
 echo   --skip-push           Skip podman push
 echo   --skip-deploy         Skip deploy commands
-echo   --backend-only        Only backend (manual)
-echo   --frontend-only       Only frontend (manual)
+echo   --backend-only        Only backend
+echo   --frontend-only       Only frontend
 echo   -h, --help            This help
 echo.
 echo Examples:
@@ -201,59 +188,6 @@ echo   %~nx0
 echo   %~nx0 -v 6
 echo   %~nx0 --backend-only
 echo   %~nx0 --skip-build --skip-push
-exit /b 0
-
-:auto_detect
-:: Check for explicit manual selection
-if "%BACKEND_ONLY%"=="true" exit /b 0
-if "%FRONTEND_ONLY%"=="true" exit /b 0
-if "%FORCE_BOTH%"=="true" (
-    echo [INFO] Flag --both detected
-    exit /b 0
-)
-
-:: Get changed files from git (ignore whitespace / CRLF)
-set CHANGED=
-for /f "delims=" %%a in ('git diff -w --name-only HEAD 2^>nul') do (
-    set CHANGED=!CHANGED!%%a;
-)
-
-:: Fallback to last commit if nothing
-if "%CHANGED%"=="" (
-    for /f "delims=" %%a in ('git diff -w --name-only HEAD~1 HEAD 2^>nul') do (
-        set CHANGED=!CHANGED!%%a;
-    )
-)
-
-set BACKEND_CHANGED=false
-set FRONTEND_CHANGED=false
-
-:: Check backend files (skip scripts and version files)
-echo %CHANGED% | findstr /I /C:"src/" >nul && set BACKEND_CHANGED=true
-echo %CHANGED% | findstr /I /C:"pom.xml" >nul && set BACKEND_CHANGED=true
-echo %CHANGED% | findstr /I /C:"Dockerfile" >nul && set BACKEND_CHANGED=true
-
-:: Check frontend files
-echo %CHANGED% | findstr /I /C:"frontend/" >nul && set FRONTEND_CHANGED=true
-
-if "%BACKEND_CHANGED%"=="false" if "%FRONTEND_CHANGED%"=="false" (
-    echo [WARN] No changes detected in backend/frontend.
-    echo [WARN] Use --backend-only, --frontend-only or --both to force.
-    exit /b 0
-)
-
-if "%BACKEND_CHANGED%"=="true" if "%FRONTEND_CHANGED%"=="true" (
-    echo [INFO] Auto-detect: changes in both services
-    exit /b 0
-)
-
-if "%BACKEND_CHANGED%"=="true" (
-    echo [INFO] Auto-detect: changes only in backend
-    set BACKEND_ONLY=true
-) else (
-    echo [INFO] Auto-detect: changes only in frontend
-    set FRONTEND_ONLY=true
-)
 exit /b 0
 
 :next_version
@@ -294,8 +228,8 @@ exit /b 0
 
 :backend_deploy
 echo.
-echo === BACKEND DEPLOY COMMAND ^(run on remote server^) ===
-echo ssh %SSH_USER%@%SSH_HOST% "kubectl set image deployment/%BACKEND_DEPLOYMENT% %BACKEND_CONTAINER%=%BACKEND_FULL% -n %NAMESPACE%"
+echo === BACKEND DEPLOY COMMAND ===
+echo kubectl set image deployment/%BACKEND_DEPLOYMENT% %BACKEND_CONTAINER%=%BACKEND_FULL% -n %NAMESPACE%
 echo [OK] Backend deployment command ready: %BACKEND_DEPLOYMENT%
 exit /b 0
 
@@ -327,7 +261,7 @@ exit /b 0
 
 :frontend_deploy
 echo.
-echo === FRONTEND DEPLOY COMMAND ^(run on remote server^) ===
-echo ssh %SSH_USER%@%SSH_HOST% "kubectl set image deployment/%FRONTEND_DEPLOYMENT% %FRONTEND_CONTAINER%=%FRONTEND_FULL% -n %NAMESPACE%"
+echo === FRONTEND DEPLOY COMMAND ===
+echo kubectl set image deployment/%FRONTEND_DEPLOYMENT% %FRONTEND_CONTAINER%=%FRONTEND_FULL% -n %NAMESPACE%
 echo [OK] Frontend deployment command ready: %FRONTEND_DEPLOYMENT%
 exit /b 0

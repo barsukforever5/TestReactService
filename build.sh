@@ -7,8 +7,6 @@ export PATH="$JAVA_HOME/bin:$PATH"
 
 # ============================================================
 # CI/CD: сборка, push и деплой backend / frontend (Podman + Docker Hub)
-# Авто-детект: без флагов собирает только то, что изменилось в git
-# kubectl выполняется на удалённом сервере через SSH
 # ============================================================
 
 REGISTRY="docker.io/barsukforever5"
@@ -18,15 +16,13 @@ FRONTEND_IMAGE="react-frontend-image"
 NAMESPACE="dev-1"
 BACKEND_DEPLOYMENT="react-backend-app"
 FRONTEND_DEPLOYMENT="react-frontend-app"
-BACKEND_CONTAINER="react-backend"
-FRONTEND_CONTAINER="react-frontend"
+BACKEND_CONTAINER="react-backend-container"
+FRONTEND_CONTAINER="react-frontend-container"
 
 BACKEND_VER_FILE=".version.backend"
 FRONTEND_VER_FILE=".version.frontend"
 
-SSH_USER="makanin"
-SSH_HOST="146.103.121.31"
-FRONTEND_URL="https://react.barsukforever.dev/react-frontend-app/"
+FRONTEND_URL="https://react.barsukforever.dev/"
 
 # --- Флаги ---
 SKIP_BUILD=false
@@ -36,7 +32,6 @@ BACKEND_ONLY=false
 FRONTEND_ONLY=false
 BACKEND_VERSION=""
 FRONTEND_VERSION=""
-FORCE_BOTH=false
 
 log_info()  { echo -e "\033[1;34m[INFO]\033[0m $*"; }
 log_ok()    { echo -e "\033[1;32m[OK]\033[0m   $*"; }
@@ -51,20 +46,18 @@ usage() {
   -v, --version X        Общая версия (vX) для обоих
       --backend-version X
       --frontend-version X
-  --both                 Принудительно собрать оба сервиса (даже если изменений нет)
+  --backend-only         Только backend
+  --frontend-only        Только frontend
   --skip-build           Пропустить mvn/npm сборку и podman build
   --skip-push            Пропустить podman push
   --skip-deploy          Пропустить вывод deploy-команд
-  --backend-only         Только backend (игнорировать авто-детект)
-  --frontend-only        Только frontend (игнорировать авто-детект)
   -h, --help             Справка
 
 ПРИМЕРЫ:
-  $0                           # авто-детект по git diff
-  $0 -v 6                      # авто-детект + версия v6
+  $0                           # собрать оба сервиса
+  $0 -v 6                      # оба сервиса с версией v6
   $0 --backend-only            # только backend
   $0 --frontend-only --skip-deploy
-  $0 --both -v 7               # оба сервиса с версией v7
   $0 --skip-build --skip-push  # только вывод deploy-команд
 EOF
 }
@@ -78,69 +71,6 @@ next_version() {
     [[ "$cur" =~ ^[0-9]+$ ]] && echo "$((cur + 1))" || echo "1"
   else
     echo "1"
-  fi
-}
-
-# --- Авто-детект изменений ---
-auto_detect() {
-  local changed_files=""
-
-  # Игнорируем whitespace-изменения (CRLF нормализация на Windows)
-  changed_files=$(git diff -w --name-only HEAD 2>/dev/null || true)
-
-  # Если пусто — смотрим последний коммит тоже без whitespace
-  if [[ -z "$changed_files" ]]; then
-    changed_files=$(git diff -w --name-only HEAD~1 HEAD 2>/dev/null || true)
-  fi
-
-  local backend_changed=false
-  local frontend_changed=false
-
-  while IFS= read -r file; do
-    [[ -z "$file" ]] && continue
-    # skip build scripts and version files
-    case "$file" in
-      build.sh|build.bat|.gitignore|.version.*) continue ;;
-    esac
-
-    if [[ "$file" =~ ^src/ ]] || [[ "$file" == "pom.xml" ]] || [[ "$file" == "Dockerfile" ]]; then
-      backend_changed=true
-    fi
-    if [[ "$file" =~ ^frontend/ ]]; then
-      frontend_changed=true
-    fi
-  done <<< "$changed_files"
-
-  # Сохраняем ручные выборы
-  local explicit=false
-  [[ "$BACKEND_ONLY" == true || "$FRONTEND_ONLY" == true ]] && explicit=true
-
-  if [[ "$explicit" == true ]]; then
-    return  # пользователь сам решил
-  fi
-
-  if [[ "$FORCE_BOTH" == true ]]; then
-    log_info "Обнаружен флаг --both"
-    return
-  fi
-
-  if [[ "$backend_changed" == false && "$frontend_changed" == false ]]; then
-    log_warn "Не обнаружено изменений в backend/frontend."
-    log_warn "Используй --backend-only, --frontend-only или --both для форсирования."
-    exit 0
-  fi
-
-  if [[ "$backend_changed" == true && "$frontend_changed" == true ]]; then
-    log_info "Авто-детект: изменения в обоих сервисах"
-    return
-  fi
-
-  if [[ "$backend_changed" == true ]]; then
-    log_info "Авто-детект: изменения только в backend"
-    BACKEND_ONLY=true    # → соберётся только backend
-  else
-    log_info "Авто-детект: изменения только в frontend"
-    FRONTEND_ONLY=true   # → соберётся только frontend
   fi
 }
 
@@ -161,10 +91,6 @@ while [[ $# -gt 0 ]]; do
       FRONTEND_VERSION="v${2#v}"
       FRONTEND_ONLY=true
       shift 2
-      ;;
-    --both)
-      FORCE_BOTH=true
-      shift
       ;;
     --skip-build)
       SKIP_BUILD=true; shift
@@ -193,9 +119,6 @@ done
 if [[ "$BACKEND_ONLY" == true && "$FRONTEND_ONLY" == true ]]; then
   log_error "--backend-only и --frontend-only нельзя вместе"; exit 1
 fi
-
-# --- АВТО-ДЕТЕКТ ---
-auto_detect
 
 # --- Вычисление версий ---
 if [[ -z "$BACKEND_VERSION" ]]; then
@@ -232,8 +155,8 @@ backend_push() {
 
 backend_deploy() {
   echo ""
-  log_info "=== BACKEND DEPLOY COMMAND (run on remote server) ==="
-  echo "ssh $SSH_USER@$SSH_HOST \"kubectl set image deployment/$BACKEND_DEPLOYMENT ${BACKEND_CONTAINER}=$BACKEND_FULL -n $NAMESPACE\""
+  log_info "=== BACKEND DEPLOY COMMAND ==="
+  echo "kubectl set image deployment/$BACKEND_DEPLOYMENT ${BACKEND_CONTAINER}=$BACKEND_FULL -n $NAMESPACE"
   log_ok "Backend deployment command ready: $BACKEND_DEPLOYMENT"
 }
 
@@ -254,8 +177,8 @@ frontend_push() {
 
 frontend_deploy() {
   echo ""
-  log_info "=== FRONTEND DEPLOY COMMAND (run on remote server) ==="
-  echo "ssh $SSH_USER@$SSH_HOST \"kubectl set image deployment/$FRONTEND_DEPLOYMENT ${FRONTEND_CONTAINER}=$FRONTEND_FULL -n $NAMESPACE\""
+  log_info "=== FRONTEND DEPLOY COMMAND ==="
+  echo "kubectl set image deployment/$FRONTEND_DEPLOYMENT ${FRONTEND_CONTAINER}=$FRONTEND_FULL -n $NAMESPACE"
   log_ok "Frontend deployment command ready: $FRONTEND_DEPLOYMENT"
 }
 

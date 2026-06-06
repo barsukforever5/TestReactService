@@ -1,8 +1,9 @@
 package org.example.controller;
 
-import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.map.IMap;
+//import com.hazelcast.core.HazelcastInstance;
+//import com.hazelcast.map.IMap;
 import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletRequest;
 import org.example.User;
 import org.example.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,15 +17,15 @@ import java.util.List;
 @RequestMapping("/api")
 public class UserController {
 
-    @Autowired
-    private HazelcastInstance hazelcast;
+//    @Autowired
+//    private HazelcastInstance hazelcast;
 
-    @PostMapping("/put")
-    public String put() {
-        IMap<String, String> map = hazelcast.getMap("test");
-        map.put("hello", "from-react");
-        return "ok";
-    }
+//    @PostMapping("/put")
+//    public String put() {
+//        IMap<String, String> map = hazelcast.getMap("test");
+//        map.put("hello", "from-react");
+//        return "ok";
+//    }
 
     private final UserService service;
 
@@ -38,7 +39,9 @@ public class UserController {
     }
 
     @GetMapping("/users")
-    public List<User> list() {
+    public List<User> list(HttpServletRequest req) {
+        System.out.println("HIT: " + req.getRequestURI());
+        System.out.println("LIST USERS IS CALLED");
         return service.findAll();
     }
 
