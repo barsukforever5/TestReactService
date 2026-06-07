@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "test-react-service.fullname" . }}-backend
+  labels:
+    app.kubernetes.io/component: backend
+    {{- include "test-react-service.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount.backend }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: backend
+      {{- include "test-react-service.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: backend
+        {{- include "test-react-service.selectorLabels" . | nindent 8 }}
+    spec:
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.backend.service.targetPort }}
+              protocol: TCP
+          env:
+            - name: SPRING_MVC_VIEW_PREFIX
+              value: {{ .Values.backend.config.springmvc.view.prefix | quote }}
+            - name: SPRING_MVC_VIEW_SUFFIX
+              value: {{ .Values.backend.config.springmvc.view.suffix | quote }}
+            - name: ARANGODB_HOST
+              value: {{ .Values.backend.config.arangodb.host | quote }}
+            - name: ARANGODB_PORT
+              value: {{ .Values.backend.config.arangodb.port | quote }}
+            - name: ARANGODB_USER
+              value: {{ .Values.backend.config.arangodb.user | quote }}
+            - name: ARANGODB_PASSWORD
+              value: {{ .Values.backend.config.arangodb.password | quote }}
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /api/users
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/users
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
