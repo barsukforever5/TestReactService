@@ -1,5 +1,6 @@
 # Default values for test-react-service.
 # This is a YAML-formatted file.
+# Chart matches real server config: Traefik ingress routes /api to backend directly.
 
 replicaCount:
   backend: 1
@@ -10,41 +11,44 @@ replicaCount:
 # ----------------------------------------
 backend:
   image:
-    repository: test-react-service-backend
+    repository: docker.io/barsukforever5/react-backend-image
     pullPolicy: IfNotPresent
     tag: "latest"
 
   service:
     type: ClusterIP
-    port: 8080
-    targetPort: 8080
+    port: 80          # Service port exposed to cluster (Ingress hits this)
+    targetPort: 8080  # Actual Tomcat container port
 
-  resources:
-    limits:
-      memory: "1Gi"
-      cpu: "1000m"
-    requests:
-      memory: "512Mi"
-      cpu: "250m"
+  resources: {}
+    # limits:
+    #   memory: "1Gi"
+    #   cpu: "1000m"
+    # requests:
+    #   memory: "512Mi"
+    #   cpu: "250m"
 
-  # Spring Boot / ArangoDB configuration
-  config:
-    springmvc:
-      view:
-        prefix: "/WEB-INF/jsp/"
-        suffix: ".jsp"
-    arangodb:
-      host: "arangodb.arango.svc.cluster.local"
-      port: 8529
-      user: "root"
-      password: "root"
+  # Optional readiness/liveness probes
+  probes:
+    enabled: false
+
+  # Extra environment variables (e.g. to override application.yml)
+  env: []
+    # - name: ARANGODB_HOST
+    #   value: "arangodb.arango.svc.cluster.local"
+    # - name: ARANGODB_PASSWORD
+    #   valueFrom:
+    #     secretKeyRef:
+    #       name: arangodb-secret
+    #       key: password
 
 # ----------------------------------------
 # Frontend (React + Nginx)
+# Nginx config is baked into the Docker image; no ConfigMap needed.
 # ----------------------------------------
 frontend:
   image:
-    repository: test-react-service-frontend
+    repository: docker.io/barsukforever5/react-frontend-image
     pullPolicy: IfNotPresent
     tag: "latest"
 
@@ -53,25 +57,40 @@ frontend:
     port: 80
     targetPort: 80
 
-  resources:
-    limits:
-      memory: "256Mi"
-      cpu: "500m"
-    requests:
-      memory: "128Mi"
-      cpu: "100m"
+  resources: {}
+    # limits:
+    #   memory: "256Mi"
+    #   cpu: "500m"
+    # requests:
+    #   memory: "128Mi"
+    #   cpu: "100m"
 
-  # Ingress / External access
-  ingress:
-    enabled: true
-    className: "nginx"
-    annotations:
-      nginx.ingress.kubernetes.io/proxy-body-size: "10m"
-    host: test-react-service.local
-    tls: []
-    # - secretName: test-react-service-tls
-    #   hosts:
-    #     - test-react-service.local
+# ----------------------------------------
+# Ingress (Traefik)
+# Routes /api directly to backend, / to frontend.
+# TLS via Letsencrypt annotations.
+# ----------------------------------------
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+  host: test-react-service.local
+  # Optional explicit TLS block (mainly for non-Traefik controllers)
+  tls:
+    enabled: false
+    secretName: ""
+  paths:
+    - path: /api
+      pathType: Prefix
+      service: backend
+      port: 80
+    - path: /
+      pathType: Prefix
+      service: frontend
+      port: 80
 
 # ----------------------------------------
 # Global

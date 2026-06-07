@@ -27,21 +27,15 @@ spec:
             - name: http
               containerPort: {{ .Values.backend.service.targetPort }}
               protocol: TCP
+          {{- if .Values.backend.env }}
           env:
-            - name: SPRING_MVC_VIEW_PREFIX
-              value: {{ .Values.backend.config.springmvc.view.prefix | quote }}
-            - name: SPRING_MVC_VIEW_SUFFIX
-              value: {{ .Values.backend.config.springmvc.view.suffix | quote }}
-            - name: ARANGODB_HOST
-              value: {{ .Values.backend.config.arangodb.host | quote }}
-            - name: ARANGODB_PORT
-              value: {{ .Values.backend.config.arangodb.port | quote }}
-            - name: ARANGODB_USER
-              value: {{ .Values.backend.config.arangodb.user | quote }}
-            - name: ARANGODB_PASSWORD
-              value: {{ .Values.backend.config.arangodb.password | quote }}
+            {{- toYaml .Values.backend.env | nindent 12 }}
+          {{- end }}
+          {{- if .Values.backend.resources }}
           resources:
             {{- toYaml .Values.backend.resources | nindent 12 }}
+          {{- end }}
+          {{- if .Values.backend.probes.enabled }}
           readinessProbe:
             httpGet:
               path: /api/users
@@ -58,3 +52,4 @@ spec:
             periodSeconds: 15
             timeoutSeconds: 5
             failureThreshold: 3
+          {{- end }}

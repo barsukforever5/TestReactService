@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: react-frontend-app
+  namespace: dev-1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: react-frontend-app
+  template:
+    metadata:
+      labels:
+        app: react-frontend-app
+    spec:
+      containers:
+        - name: react-frontend-container
+          image: docker.io/barsukforever5/react-frontend-image:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80

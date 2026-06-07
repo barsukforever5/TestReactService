@@ -1,88 +1,69 @@
 # TestReactService Helm Chart
 
-Helm chart для деплоя **TestReactService** в Kubernetes — включает:
-- **Backend**: Spring Boot (Tomcat) приложение с REST API
-- **Frontend**: React SPA, обслуживаемый Nginx
+Helm chart для деплоя **TestReactService** в Kubernetes — 1-to-1 match с серверной конфигурацией из `k8s/from_server/`.
 
 ## Архитектура
 
 ```
-     [ Ingress 80/443 ]
-            |
-     [ Frontend Service:80 ]
-            |
-     [ Nginx React + API Proxy ]
-       |                    |
-   index.html          /api/* → [ Backend Service:8080 ]
-                                 |
-                          [ Spring Boot + ArangoDB ]
+                    [ Ingress (Traefik) ]
+                     /api        / (root)
+                       |            |
+       [react-backend-service:80] [react-frontend-service:80]
+                |                        |
+          [Tomcat:8080]           [Nginx:80]
+       (Spring Boot API)         (React SPA)
 ```
 
-Frontend Nginx делает проксирование API-запросов (`/api/*`) на backend.
+- Ingress маршрутизирует `/api/*` напрямую на backend service (порт 80 → 8080)
+- Ingress маршрутизирует `/` на frontend service (порт 80 → 80)
+- TLS через Traefik + Letsencrypt (не нужен свой Secret)
+- Nginx-конфиг зашит в Docker образ frontend — ConfigMap не используется
 
 ## Требования
 
 - Kubernetes 1.24+
 - Helm 3.12+
-- Ingress Controller (Nginx или аналог)
-- ArangoDB в namespace `arango` (или настройте свой host)
+- Traefik Ingress Controller (настроен с certresolver `letsencrypt`)
+- ArangoDB в namespace `arango` (или иной, указанный в Dockerfile образа)
 
 ## Установка
 
-### 1. Сборка Docker образов
+### Базовая установка
 
 ```bash
-# Backend
-docker build -t test-react-service-backend:latest .
-
-# Frontend
-cd frontend
-docker build -t test-react-service-frontend:latest .
-```
-
-> При работе с registry, добавьте тег с адресом registry и настройте `imagePullSecrets`.
-
-### 2. Установка Chart
-
-```bash
-# Базовая установка
-helm install test-react-service ./k8s/helm
-
-# С кастомными значениями
 helm install test-react-service ./k8s/helm \
-  --set backend.image.repository=my-registry/backend \
-  --set backend.image.tag=v1.2.3 \
-  --set frontend.ingress.host=myapp.example.com \
-  --set backend.config.arangodb.password=secret
+  --set ingress.host=react.barsukforever.dev
 ```
 
-### 3. Проверка статуса
+### С реальными образами (как на сервере)
 
 ```bash
-kubectl get pods
-kubectl get svc
-kubectl get ingress
+helm install test-react-service ./k8s/helm \
+  --set backend.image.tag=v13 \
+  --set frontend.image.tag=v1 \
+  --set ingress.host=react.barsukforever.dev \
+  --set ingress.annotations."traefik.ingress.kubernetes.io/router.tls.certresolver"=letsencrypt
 ```
 
-### 4. Доступ к приложению
-
-- **С Ingress**: `http://test-react-service.local` (добавьте хост в `/etc/hosts`)
-- **Без Ingress** (port-forward):
-  ```bash
-  kubectl port-forward svc/test-react-service-frontend 8080:80
-  # Открыть: http://localhost:8080
-  ```
-
-## Обновление
+### Обновление
 
 ```bash
 helm upgrade test-react-service ./k8s/helm
 ```
 
-## Удаление
+### Удаление
 
 ```bash
 helm uninstall test-react-service
+```
+
+## Проверка статуса
+
+```bash
+kubectl get deployment
+kubectl get svc
+kubectl get ingress
+kubectl get pods
 ```
 
 ## Настройка Values
@@ -91,17 +72,17 @@ helm uninstall test-react-service
 |----------|----------|------------|
 | `replicaCount.backend` | Реплики backend | `1` |
 | `replicaCount.frontend` | Реплики frontend | `1` |
-| `backend.image.repository` | Образ backend | `test-react-service-backend` |
+| `backend.image.repository` | Образ backend | `docker.io/barsukforever5/react-backend-image` |
 | `backend.image.tag` | Тег backend | `latest` |
-| `frontend.image.repository` | Образ frontend | `test-react-service-frontend` |
+| `backend.service.port` | Порт backend Service | `80` |
+| `backend.service.targetPort` | Порт Tomcat контейнера | `8080` |
+| `backend.probes.enabled` | Включить readiness/liveness | `false` |
+| `frontend.image.repository` | Образ frontend | `docker.io/barsukforever5/react-frontend-image` |
 | `frontend.image.tag` | Тег frontend | `latest` |
-| `frontend.ingress.enabled` | Включить Ingress | `true` |
-| `frontend.ingress.host` | Хост Ingress | `test-react-service.local` |
-| `frontend.ingress.className` | Класс Ingress | `nginx` |
-| `backend.config.arangodb.host` | Хост ArangoDB | `arangodb.arango.svc.cluster.local` |
-| `backend.config.arangodb.port` | Порт ArangoDB | `8529` |
-| `backend.config.arangodb.user` | Пользователь ArangoDB | `root` |
-| `backend.config.arangodb.password` | Пароль ArangoDB | `root` |
+| `ingress.enabled` | Включить Ingress | `true` |
+| `ingress.host` | Хост Ingress | `test-react-service.local` |
+| `ingress.className` | Ингресс-контроллер | `traefik` |
+| `ingress.annotations` | Аннотации Traefik | letsencrypt, web, websecure |
 
 ## Пример custom-values.yaml
 
@@ -112,27 +93,27 @@ replicaCount:
 
 backend:
   image:
-    repository: my-registry/test-react-backend
-    tag: v1.0.0
-  config:
-    arangodb:
-      host: arangodb-cluster.endpoint
-      password: supersecret
+    tag: v13
+  probes:
+    enabled: true
+  env:
+    - name: ARANGODB_HOST
+      value: "arangodb.arango.svc.cluster.local"
 
 frontend:
   image:
-    repository: my-registry/test-react-frontend
-    tag: v1.0.0
-  ingress:
-    enabled: true
-    host: myapp.example.com
-    tls:
-      - secretName: myapp-tls
-        hosts:
-          - myapp.example.com
+    tag: v1
+
+ingress:
+  host: react.barsukforever.dev
 ```
 
-Установка:
-```bash
-helm install test-react-service ./k8s/helm -f custom-values.yaml
-```
+## Соответствие с серверными манифестами
+
+| Серверный YAML | Helm шаблон | Статус |
+|----------------|-------------|--------|
+| `react-backend-deployment.yaml` | `templates/backend-deployment.yaml` | ✅ match |
+| `react-backend-service.yaml` | `templates/backend-service.yaml` | ✅ match (port 80→8080) |
+| `react-frontend-deployment.yaml` | `templates/frontend-deployment.yaml` | ✅ match |
+| `react-frontend-service.yaml` | `templates/frontend-service.yaml` | ✅ match |
+| `react-ingress.yaml` | `templates/ingress.yaml` | ✅ match (Traefik /api + /) |
