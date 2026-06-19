@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"creationTimestamp":"2026-05-25T16:08:19Z","name":"react-backend-service","namespace":"dev-1","resourceVersion":"35732","uid":"3795297f-c4de-466f-b7ac-196f3fea148a"},"spec":{"externalTrafficPolicy":"Cluster","internalTrafficPolicy":"Cluster","ipFamilies":["IPv4"],"ipFamilyPolicy":"SingleStack","ports":[{"nodePort":30081,"port":80,"protocol":"TCP","targetPort":8080}],"selector":{"app":"react-backend-app"},"sessionAffinity":"None","type":"NodePort"},"status":{"loadBalancer":{}}}
+  name: react-backend-service
+  namespace: dev-1
+spec:
+  clusterIP: 10.43.207.8
+  clusterIPs:
+  - 10.43.207.8
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: react-backend-app
+  sessionAffinity: None
+  type: ClusterIP
+  loadBalancer: {}
