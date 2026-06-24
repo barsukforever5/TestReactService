@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "13"
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"name":"react-frontend-app","namespace":"dev-1"},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"react-frontend-app"}},"template":{"metadata":{"labels":{"app":"react-frontend-app"}},"spec":{"containers":[{"image":"docker.io/barsukforever5/react-frontend-image:v1","imagePullPolicy":"IfNotPresent","name":"react-frontend-container","ports":[{"containerPort":80}]}]}}}}
+  name: react-frontend-app
+  namespace: dev-1
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: react-frontend-app
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: react-frontend-app
+    spec:
+      containers:
+      - image: docker.io/barsukforever5/react-frontend-image:v18
+        imagePullPolicy: IfNotPresent
+        name: react-frontend-container
+        ports:
+        - containerPort: 80
+          protocol: TCP
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+  availableReplicas: 1
+  conditions:
+  - lastTransitionTime: "2026-05-25T16:26:29Z"
+    lastUpdateTime: "2026-05-25T16:26:29Z"
+    message: Deployment has minimum availability.
+    reason: MinimumReplicasAvailable
+    type: Available
+  - lastTransitionTime: "2026-05-25T16:26:26Z"
+    lastUpdateTime: "2026-06-06T13:16:00Z"
+    message: ReplicaSet "react-frontend-app-77cf6f6c77" has successfully progressed.
+    reason: NewReplicaSetAvailable
+    type: Progressing
+  observedGeneration: 13
+  readyReplicas: 1
+  replicas: 1
+  terminatingReplicas: 0
+  updatedReplicas: 1
