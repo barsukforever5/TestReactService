@@ -1,0 +1,14 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: react-app
+  namespace: argocd
+spec:
+  destination:
+    namespace: dev-1
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    path: apps
+    repoURL: https://github.com/barsukforever5/TestReactService.git
+    targetRevision: HEAD
