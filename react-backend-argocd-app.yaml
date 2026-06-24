@@ -12,3 +12,6 @@ spec:
     path: apps
     repoURL: https://github.com/barsukforever5/TestReactService.git
     targetRevision: HEAD
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
